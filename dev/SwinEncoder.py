@@ -24,16 +24,16 @@ class PatchEmbed2D(nn.Module):
     r""" Image to Patch Embedding
     Args:
         patch_size (int): Patch token size. Default: 4.
-        in_chans (int): Number of input image channels. Default: 3.
+        input_channels (int): Number of input image channels. Default: 3.
         embed_dim (int): Number of linear projection output channels. Default: 96.
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(self, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, **kwargs):
+    def __init__(self, patch_size=4, input_channels=3, embed_dim=96, norm_layer=None, **kwargs):
         super().__init__()
         if isinstance(patch_size, int):
             patch_size = (patch_size, patch_size)
-        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+        self.proj = nn.Conv2d(input_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
         if norm_layer is not None:
             self.norm = norm_layer(embed_dim)
         else:
@@ -362,7 +362,7 @@ class VSSLayer(nn.Module):
 
 
 class VSSMEncoder(nn.Module):
-    def __init__(self, patch_size=4, in_chans=3, depths=[2, 2, 9, 2],
+    def __init__(self, patch_size=4, input_channels=3, depths=[2, 2, 9, 2],
                  dims=[96, 192, 384, 768], d_state=16, drop_rate=0., attn_drop_rate=0., drop_path_rate=0.2,
                  norm_layer=nn.LayerNorm, patch_norm=True,
                  use_checkpoint=False, **kwargs):
@@ -374,7 +374,7 @@ class VSSMEncoder(nn.Module):
         self.num_features = dims[-1]
         self.dims = dims
 
-        self.patch_embed = PatchEmbed2D(patch_size=patch_size, in_chans=in_chans, embed_dim=self.embed_dim,
+        self.patch_embed = PatchEmbed2D(patch_size=patch_size, input_channels=input_channels, embed_dim=self.embed_dim,
                                         norm_layer=norm_layer if patch_norm else None)
 
         # WASTED absolute position embedding ======================
@@ -453,8 +453,8 @@ class VSSMEncoder(nn.Module):
 class SwinEncoder(nn.Module):
     def __init__(
             self,
-            in_chans=1,
-            out_chans=13,
+            input_channels:int,
+            output_channels=13,
             feat_size=[48, 96, 192, 384, 768],
             drop_path_rate=0,
             layer_scale_init_value=1e-6,
@@ -467,21 +467,21 @@ class SwinEncoder(nn.Module):
         super().__init__()
 
         self.hidden_size = hidden_size
-        self.in_chans = in_chans
-        self.out_chans = out_chans
+        self.input_channels = input_channels
+        self.output_channels = output_channels
         self.drop_path_rate = drop_path_rate
         self.feat_size = feat_size
         self.layer_scale_init_value = layer_scale_init_value
 
         self.stem = nn.Sequential(
-            nn.Conv2d(in_chans, feat_size[0], kernel_size=7, stride=2, padding=3),
+            nn.Conv2d(input_channels, feat_size[0], kernel_size=7, stride=2, padding=3),
             nn.InstanceNorm2d(feat_size[0], eps=1e-5, affine=True),
         )
         self.spatial_dims = spatial_dims
-        self.vssm_encoder = VSSMEncoder(patch_size=2, in_chans=feat_size[0])
+        self.vssm_encoder = VSSMEncoder(patch_size=2, input_channels=feat_size[0])
         self.encoder1 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
-            in_channels=self.in_chans,
+            in_channels=self.input_channels,
             out_channels=self.feat_size[0],
             kernel_size=3,
             stride=1,
@@ -589,7 +589,7 @@ class SwinEncoder(nn.Module):
             self.out_layers.append(UnetOutBlock(
                 spatial_dims=spatial_dims,
                 in_channels=self.feat_size[i],
-                out_channels=self.out_chans
+                out_channels=self.output_channels
             ))
 
     def forward(self, x_in):
